@@ -2,7 +2,8 @@
 --
 -- Design rules (this is a game for a cockatiel, not a human):
 --   * No losing, no timers, no penalties. Every touch does something nice.
---   * Targets are huge, slow-ish and very high contrast.
+--   * Seeds are drawn small (Pepper's preference) but their hit areas are
+--     much larger than the art, so aiming stays forgiving.
 --   * The reward is sound: pops climb a scale, milestones play a full song.
 --   * Nothing important is behind a menu, because Pepper cannot use menus.
 
@@ -16,8 +17,8 @@ local REWARD_EVERY = 10     -- pops per cockatiel song
 local PARTY_TIME = 5.0      -- seconds of celebration
 local IDLE_AFTER = 14       -- seconds before the game starts calling Pepper back
 local COMBO_WINDOW = 2.4
-local BASE_TARGETS = 3
-local MAX_TARGETS = 6
+local BASE_TARGETS = 5      -- seeds are small, so scatter more of them
+local MAX_TARGETS = 9
 local HOLD_TO_MUTE = 1.1    -- birds tap, they do not hold: safe hidden control
 
 local SAVE_FILE = "best.txt"
@@ -64,9 +65,9 @@ local function lerp(a, b, t) return a + (b - a) * t end
 --------------------------------------------------------------------------
 
 local function spawnPoint()
-    -- Best-of-six sampling keeps the snacks from piling up on each other.
+    -- Best-of-six sampling keeps the seeds from piling up on each other.
     local bestX, bestY, bestScore = G.w * 0.5, G.h * 0.5, -1
-    local m = 90 * G.scale
+    local m = 55 * G.scale
     for _ = 1, 6 do
         local x = m + love.math.random() * math.max(1, G.w - 2 * m)
         local y = m + love.math.random() * math.max(1, G.h - 2 * m)
@@ -89,7 +90,7 @@ end
 local function desiredCount()
     local n = BASE_TARGETS + math.floor(G.score / 14)
     n = math.min(n, MAX_TARGETS)
-    if G.party > 0 then n = n + 3 end
+    if G.party > 0 then n = n + 4 end
     return n
 end
 
@@ -218,7 +219,8 @@ function Game.press(id, x, y)
     G.world.curiosity = 1
     Effects.ripple(x, y, G.scale)
 
-    -- Nearest overlapping target wins, so overlapping snacks feel fair.
+    -- Nearest overlapping target wins. This matters more now that the hit
+    -- areas are much wider than the seeds and routinely overlap.
     local hitIndex, hitDist
     for i, t in ipairs(G.targets) do
         if t:contains(x, y) then
@@ -311,7 +313,7 @@ function Game.update(dt)
         G.spawnIn = 0.25
     end
     -- Party is over: retire the extras with a little puff instead of a
-    -- target blinking out of existence in front of Pepper.
+    -- seed blinking out of existence in front of Pepper.
     while #G.targets > desiredCount() + 2 do
         local t = table.remove(G.targets)
         local x, y = t:pos()
@@ -435,7 +437,7 @@ local function drawIntro()
 
     love.graphics.setFont(fonts.small)
     love.graphics.setColor(1, 1, 1, 0.8 * a)
-    love.graphics.printf("touch the dancing snacks",
+    love.graphics.printf("touch the dancing seeds",
         sx, cy + fonts.huge:getHeight() * 1.05, sw, "center")
     love.graphics.printf("hold the top-right corner for sound on/off",
         sx, sy + sh - fonts.small:getHeight() * 2.2, sw, "center")

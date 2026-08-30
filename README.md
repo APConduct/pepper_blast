@@ -2,9 +2,9 @@
 
 A tap game for **Pepper**, Joey's cockatiel. 🦜
 
-Brightly coloured snacks dance around the screen. Pepper touches one, it pops
-with a chirp, and the chirps climb a scale as he keeps going. Every 10 pops the
-screen throws confetti and a synthesised cockatiel song plays.
+Seeds dance around the screen. Pepper touches one, it pops with a chirp, and
+the chirps climb a scale as he keeps going. Every 10 pops the screen throws
+confetti and a synthesised cockatiel song plays.
 
 Built with [LÖVE](https://love2d.org) 11.4. Runs on desktop (mouse) and iPhone
 / iPad (touch). No image or audio assets — every shape is drawn with primitives
@@ -30,7 +30,7 @@ There are deliberately no menus — Pepper cannot use menus.
 | Input | Action |
 | --- | --- |
 | Tap / click anywhere | ripple + soft blip |
-| Tap / click a snack | pop, chirp, +1 point |
+| Tap / click a seed | pop, chirp, +1 point |
 | **Hold** the top-right corner for ~1s | sound on/off |
 | `M` | mute | 
 | `F` | fullscreen |
@@ -47,13 +47,23 @@ These aren't arbitrary choices, they're why the game works:
 - **You cannot lose.** No timers, no misses, no game over. Every touch produces
   a visible ripple and a small sound, so Pepper learns that touching the screen
   does something even before he learns to aim.
-- **Huge, high-contrast targets.** Fully saturated fills with hard white
-  outlines on a dark background. Hit areas are 1.3× the visible radius.
-- **Curiosity pull.** For ~1.5s after a touch, the snacks drift gently toward
+- **Seed-sized art, oversized hit areas.** Pepper prefers small seeds to big
+  cartoon fruit, so the targets are roughly life-size — but the hit area is
+  **2.4× the visible radius**, which is invisible to him. At 900x620 the seeds
+  are 33-68 px across while the touch zones are 80-163 px. Shrinking the
+  picture deliberately does not shrink the target.
+- **High contrast at small size.** Every seed gets a pale halo, a hard white
+  outline and a specular highlight on a dark background, which is what makes
+  something small still pop — including the dark grey sunflower seeds.
+- **Four real seed silhouettes**, weighted like a cockatiel mix: millet ~39%,
+  canary ~30%, safflower ~22%, sunflower ~9% (the fatty treat).
+- **The dance is measured in screen units, not seed radii**, so tiny seeds
+  still bob and sway across the screen as much as large targets would.
+- **Curiosity pull.** For ~1.5s after a touch, the seeds drift gently toward
   wherever Pepper touched. It quietly converts near-misses into hits.
-- **Attract mode.** After 14 seconds of no play, the snacks slow down, grow,
-  gather toward the centre, and the game whistles a cockatiel *contact call*
-  every 7-10 seconds to invite him back.
+- **Attract mode.** After 14 seconds of no play, the seeds slow down, swell by
+  35%, gather toward the centre, and the game whistles a cockatiel *contact
+  call* every 7-10 seconds to invite him back.
 - **Sound is the reward.** Pops walk up a pentatonic ladder (1.2 kHz → 2.9 kHz)
   so a run of hits sounds like a tune, and milestones play one of three
   whistled songs, including the classic wolf whistle.
@@ -65,7 +75,7 @@ These aren't arbitrary choices, they're why the game works:
 - A dry beak is keratin and often won't register on a capacitive screen. Most
   birds end up using their **tongue**, or a foot, which works fine. Let him
   figure it out; don't force it.
-- Start him off by tapping a snack yourself while he watches.
+- Start him off by tapping a seed yourself while he watches.
 - Keep the volume moderate — cockatiel hearing is sensitive, and the reward
   works better quiet than loud. The game's master volume is already set to 0.75.
 - A screen protector is a good idea. Beaks are strong.
@@ -79,14 +89,24 @@ The knobs are all at the top of `src/game.lua`:
 local REWARD_EVERY = 10     -- pops per cockatiel song
 local PARTY_TIME   = 5.0    -- seconds of celebration
 local IDLE_AFTER   = 14     -- seconds before attract mode
-local BASE_TARGETS = 3      -- snacks on screen to start
-local MAX_TARGETS  = 6      -- cap as the score climbs
+local BASE_TARGETS = 5      -- seeds on screen to start
+local MAX_TARGETS  = 9      -- cap as the score climbs
 local HOLD_TO_MUTE = 1.1    -- seconds to hold the hidden corner
 ```
 
-If Pepper is struggling, raise the hit radius multiplier in
-`Target:contains` (`src/target.lua`) or lower `baseSpeed` in `Target.new`.
-Colours and shapes live in the same file.
+Seed size and difficulty live at the top of `src/target.lua`:
+
+```lua
+local HIT_SCALE  = 2.4      -- invisible hit radius / visible radius
+local DANCE_BOB  = 9        -- dance amplitude, in screen units
+local DANCE_SWAY = 7
+```
+
+If Pepper is struggling, raise `HIT_SCALE` (costs nothing visually) or lower
+`baseSpeed` in `Target.new`. To resize the seeds themselves, change
+`baseRadius` in `Target.new` — the per-seed `size` multipliers in the `KIND`
+table keep millet small and sunflower large relative to each other. Seed
+colours and silhouettes are in the same file.
 
 ## Getting it on the iPhone
 
@@ -122,8 +142,9 @@ luajit tests/headless.lua      # or: lua tests/headless.lua
 
 It simulates ~3400 frames of play across desktop and phone-sized resizes,
 exercises attract mode, celebrations, mute and the keyboard shortcuts, asserts
-that no NaN reaches a colour/transform/audio sample, and verifies every
-synthesised whistle lands in cockatiel range (0.5–4 kHz).
+that no NaN reaches a colour/transform/audio sample, verifies every synthesised
+whistle lands in cockatiel range (0.5–4 kHz), and measures seed size against
+hit size so the targets can't quietly become unfair to hit.
 
 ## Layout
 
@@ -131,7 +152,7 @@ synthesised whistle lands in cockatiel range (0.5–4 kHz).
 main.lua           LOVE callbacks, touch/mouse routing
 conf.lua           window + module config
 src/game.lua       state, scoring, celebrations, HUD
-src/target.lua     the dancing snacks (movement + drawing)
+src/target.lua     the dancing seeds (movement + drawing)
 src/effects.lua    bursts, rings, ripples, confetti, ambience
 src/audio.lua      the whistle synthesiser
 tests/headless.lua stubbed-LOVE regression test

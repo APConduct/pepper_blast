@@ -212,12 +212,64 @@ check(tonumber(files["best.txt"]) and tonumber(files["best.txt"]) > 0,
     "best score was never saved")
 
 --------------------------------------------------------------------------
+-- Seed size vs hit size
+--
+-- Pepper prefers seed-sized targets, but shrinking the art must not shrink
+-- what he has to hit. Measure both through the public API.
+--------------------------------------------------------------------------
+
+local Target = require("src.target")
+
+local probeWorld = {
+    w = 900, h = 620, scale = 620 / 520,
+    beat = 0, calm = 0, party = 0, curiosity = 0,
+}
+
+local function hitRadiusOf(t)
+    -- Largest offset from the centre that still registers as a touch.
+    local lo, hi = 0, 4000
+    for _ = 1, 40 do
+        local mid = (lo + hi) / 2
+        if t:contains(t.x + mid, t.y) then lo = mid else hi = mid end
+    end
+    return lo
+ end
+
+local minSeed, maxSeed = math.huge, 0
+local minHit, maxHit = math.huge, 0
+local kinds = {}
+for _ = 1, 600 do
+    local t = Target.new(probeWorld, 450, 310)
+    kinds[t.kind] = (kinds[t.kind] or 0) + 1
+    minSeed = math.min(minSeed, t.radius * 2)
+    maxSeed = math.max(maxSeed, t.radius * 2)
+    local hit = hitRadiusOf(t) * 2
+    minHit = math.min(minHit, hit)
+    maxHit = math.max(maxHit, hit)
+end
+
+print()
+print(string.format("seed diameter  %.0f-%.0f px    hit diameter  %.0f-%.0f px  (at 900x620)",
+    minSeed, maxSeed, minHit, maxHit))
+local names = {}
+for k, v in pairs(kinds) do
+    names[#names + 1] = string.format("%s %.0f%%", k, v / 6)
+end
+table.sort(names)
+print("seed mix:      " .. table.concat(names, ", "))
+
+check(maxSeed <= 80, "seeds are no longer seed-sized: " .. math.floor(maxSeed) .. " px")
+check(minHit >= 70, "hit area got too small to be fair: " .. math.floor(minHit) .. " px")
+check(minHit > maxSeed, "the smallest hit area should still beat the largest seed")
+
+--------------------------------------------------------------------------
 -- Whistle frequency sanity check
 --------------------------------------------------------------------------
 
-local names = { "pop1", "pop2", "pop3", "pop4", "pop5", "pop6", "pop7",
-                "tick", "attract", "song1", "song2", "song3" }
+local sounds = { "pop1", "pop2", "pop3", "pop4", "pop5", "pop6", "pop7",
+                 "tick", "attract", "song1", "song2", "song3" }
 
+print()
 print(string.format("%-8s %8s %8s %9s", "sound", "seconds", "peak", "mean Hz"))
 for i, buf in ipairs(soundBuffers) do
     local crossings, first, last, peak = 0, nil, nil, 0
@@ -234,10 +286,10 @@ for i, buf in ipairs(soundBuffers) do
     end
     local span = (first and last) and (last - first) / RATE or 0
     local hz = span > 0 and (crossings - 1) / 2 / span or 0
-    print(string.format("%-8s %8.2f %8.3f %9.0f", names[i] or ("#" .. i),
+    print(string.format("%-8s %8.2f %8.3f %9.0f", sounds[i] or ("#" .. i),
         buf.frames / RATE, peak, hz))
     check(hz > 500 and hz < 4000,
-        (names[i] or i) .. " is outside cockatiel whistle range: " .. math.floor(hz) .. " Hz")
+        (sounds[i] or i) .. " is outside cockatiel whistle range: " .. math.floor(hz) .. " Hz")
 end
 
 --------------------------------------------------------------------------

@@ -23,18 +23,19 @@ function Effects.reset()
     end
 end
 
+-- Sized like husk fragments off a small seed rather than pulped fruit.
 function Effects.burst(x, y, color, scale, power)
     power = power or 1
-    local count = math.floor(14 * power)
+    local count = math.floor(12 * power)
     for _ = 1, count do
         local a = love.math.random() * TAU
-        local sp = (120 + love.math.random() * 320) * scale * power
+        local sp = (100 + love.math.random() * 260) * scale * power
         bits[#bits + 1] = {
             x = x, y = y,
             vx = math.cos(a) * sp,
             vy = math.sin(a) * sp - 60 * scale,
             life = 0, max = 0.5 + love.math.random() * 0.5,
-            size = (5 + love.math.random() * 7) * scale,
+            size = (3.5 + love.math.random() * 5) * scale,
             rot = love.math.random() * TAU,
             spin = (love.math.random() - 0.5) * 16,
             color = color,
@@ -47,8 +48,8 @@ function Effects.ring(x, y, color, scale, power)
     rings[#rings + 1] = {
         x = x, y = y, color = color,
         life = 0, max = 0.45,
-        from = 20 * scale, to = (95 + 40 * (power or 1)) * scale,
-        width = 8 * scale,
+        from = 8 * scale, to = (52 + 26 * (power or 1)) * scale,
+        width = 5 * scale,
     }
 end
 
