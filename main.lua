@@ -38,6 +38,11 @@ function love.mousereleased(_x, _y, _button, istouch)
     Game.release("mouse")
 end
 
+function love.mousemoved(x, y, _dx, _dy, istouch)
+    if istouch then return end
+    Game.move("mouse", x, y)
+end
+
 function love.touchpressed(id, x, y)
     Game.press(id, x, y)
 end
@@ -46,6 +51,24 @@ function love.touchreleased(id)
     Game.release(id)
 end
 
+function love.touchmoved(id, x, y)
+    Game.move(id, x, y)
+end
+
 function love.keypressed(key)
     Game.keypressed(key)
+end
+
+-- iOS can kill a backgrounded app without ever calling love.quit, so the high
+-- score is flushed as soon as we lose focus. Touches in flight at that point
+-- may never get a release, so they are dropped too.
+function love.focus(focused)
+    if not focused then
+        Game.flush()
+        Game.clearPresses()
+    end
+end
+
+function love.quit()
+    Game.flush()
 end

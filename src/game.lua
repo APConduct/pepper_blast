@@ -20,6 +20,11 @@ local COMBO_WINDOW = 2.4
 local BASE_TARGETS = 5      -- seeds are small, so scatter more of them
 local MAX_TARGETS = 9
 local HOLD_TO_MUTE = 1.1    -- birds tap, they do not hold: safe hidden control
+local RETIRE_EVERY = 0.45   -- seconds between puffing away one surplus seed
+local HOLD_SLOP = 28        -- scaled pixels of drift that cancel a corner hold
+local INTRO_FADE = 12       -- seconds for the intro to clear on its own
+local SHAKE_PEAK = 8        -- peak celebration shake offset, in scaled pixels
+local SAVE_DEBOUNCE = 2.0   -- seconds a new high score may sit unwritten
 
 local SAVE_FILE = "best.txt"
 local TAU = math.pi * 2
@@ -43,6 +48,15 @@ end
 
 local function saveBest(n)
     pcall(love.filesystem.write, SAVE_FILE, tostring(n))
+end
+
+-- Marks the high score as needing a write. Deliberately does not touch the
+-- disk: every pop past the record would otherwise be a synchronous write.
+local function markBestDirty()
+    if not G.bestDirty then
+        G.bestDirty = true
+        G.saveIn = SAVE_DEBOUNCE
+    end
 end
 
 local function safeArea()
@@ -114,6 +128,9 @@ function Game.load()
         idle = 0,
         attractIn = 0,
         spawnIn = 0,
+        retireIn = 0,
+        bestDirty = false,
+        saveIn = 0,
         intro = 1,
         flash = 0,
         shake = 0,
@@ -158,6 +175,15 @@ function Game.resize(w, h)
     end
 end
 
+--- Write a pending high score to disk. Called on a timer, when the app loses
+--- focus, and on quit, so a good run costs one write instead of one per tap.
+function Game.flush()
+    if G and G.bestDirty then
+        saveBest(G.best)
+        G.bestDirty = false
+    end
+end
+
 --------------------------------------------------------------------------
 -- Rewards
 --------------------------------------------------------------------------
@@ -185,7 +211,7 @@ local function popTarget(index)
 
     if G.score > G.best then
         G.best = G.score
-        saveBest(G.best)
+        markBestDirty()
     end
 
     local power = 1 + math.min(G.combo, 8) * 0.08
@@ -237,7 +263,31 @@ function Game.press(id, x, y)
     else
         Audio.tick()
         G.idle = math.max(0, G.idle - 4)
+        -- Touching the glass at all is the first thing Pepper has to learn,
+        -- so a miss still earns credit against the intro.
+        G.intro = math.max(0, G.intro - 0.15)
     end
+end
+
+--- A finger that slides away cancels its hold. The hidden mute control has to
+--- be a deliberate press-and-hold, not the tail of a swipe over the corner.
+function Game.move(id, x, y)
+    if not G then return end
+    local p = G.presses[id]
+    if not p or not p.corner then return end
+
+    local dx, dy = x - p.x, y - p.y
+    local slop = HOLD_SLOP * G.scale
+    if dx * dx + dy * dy > slop * slop or not inMuteCorner(x, y) then
+        p.corner = false
+    end
+end
+
+--- Drop every in-flight press. iOS can cancel a touch without ever delivering
+--- a release (backgrounding, a system edge gesture), which would otherwise
+--- leave a stale entry sitting on the mute timer forever.
+function Game.clearPresses()
+    if G then G.presses = {} end
 end
 
 function Game.release(id)
@@ -272,6 +322,13 @@ function Game.update(dt)
     G.idle = G.idle + dt
     G.world.calm = math.max(0, math.min(1, (G.idle - IDLE_AFTER) / 5))
 
+    -- The intro clears on time as well as on contact. A bird who has not
+    -- worked out aiming yet should not be stuck behind a scrim that dims the
+    -- targets, and it has to be gone before attract mode starts calling him.
+    if G.intro > 0 then
+        G.intro = math.max(0, G.intro - dt / INTRO_FADE)
+    end
+
     if G.comboTimer > 0 then
         G.comboTimer = G.comboTimer - dt
         if G.comboTimer <= 0 then G.combo = 0 end
@@ -285,6 +342,11 @@ function Game.update(dt)
     end
     G.world.party = G.party
     G.partyGlow = lerp(G.partyGlow, G.party > 0 and 1 or 0, 1 - math.exp(-4 * dt))
+
+    if G.bestDirty then
+        G.saveIn = G.saveIn - dt
+        if G.saveIn <= 0 then Game.flush() end
+    end
 
     G.flash = math.max(0, G.flash - dt * 2.2)
     G.shake = math.max(0, G.shake - dt * 1.8)
@@ -307,17 +369,22 @@ function Game.update(dt)
         t:update(dt, G.world)
     end
 
+    local want = desiredCount()
+
     G.spawnIn = G.spawnIn - dt
-    if G.spawnIn <= 0 and #G.targets < desiredCount() then
+    if G.spawnIn <= 0 and #G.targets < want then
         spawn()
         G.spawnIn = 0.25
     end
-    -- Party is over: retire the extras with a little puff instead of a
-    -- seed blinking out of existence in front of Pepper.
-    while #G.targets > desiredCount() + 2 do
+
+    -- Party is over: retire the extras one at a time, with a little puff
+    -- instead of a seed blinking out of existence in front of Pepper.
+    G.retireIn = G.retireIn - dt
+    if #G.targets > want and G.retireIn <= 0 then
         local t = table.remove(G.targets)
         local x, y = t:pos()
         Effects.burst(x, y, t.color, G.scale, 0.5)
+        G.retireIn = RETIRE_EVERY
     end
 
     -- Attract mode: soft contact calls when nobody is playing.
@@ -355,8 +422,11 @@ local function drawBackground()
     bgMesh:setVertex(3, 1, 1, 1, 1, botR, botG, botB, 1)
     bgMesh:setVertex(4, 0, 1, 0, 1, botR, botG, botB, 1)
 
+    -- Drawn with a bleed: the celebration shake slides the whole scene, and
+    -- without it the cleared black shows through at two edges.
+    local bleed = SHAKE_PEAK * G.scale
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(bgMesh, 0, 0, 0, G.w, G.h)
+    love.graphics.draw(bgMesh, -bleed, -bleed, 0, G.w + 2 * bleed, G.h + 2 * bleed)
 
     Effects.drawAmbient(G.w, G.h, G.time)
 end
@@ -448,7 +518,7 @@ function Game.draw()
 
     love.graphics.push()
     if G.shake > 0 then
-        local k = G.shake * G.shake * 8 * G.scale
+        local k = G.shake * G.shake * SHAKE_PEAK * G.scale
         love.graphics.translate(
             (love.math.random() - 0.5) * k,
             (love.math.random() - 0.5) * k)

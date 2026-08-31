@@ -192,10 +192,31 @@ local function resizeTo(w, h)
     love.resize(w, h)
 end
 
+-- Same instance src/game.lua required, so mute state can be asserted.
+local Audio = require("src.audio")
+
 step(600, 2)                                  -- ordinary play, many pops + songs
+
 love.touchpressed(90001, W - 8, 8)            -- hidden hold-to-mute corner
 step(120, 0)
 love.touchreleased(90001, W - 8, 8)
+check(Audio.isMuted(), "holding the corner did not toggle mute")
+
+-- A finger that slides out of the corner must not complete the hold.
+love.touchpressed(90002, W - 8, 8)
+love.touchmoved(90002, W * 0.5, H * 0.5)
+step(120, 0)
+love.touchreleased(90002, W * 0.5, H * 0.5)
+check(Audio.isMuted(), "a swipe out of the corner toggled mute")
+
+-- A touch cancelled by backgrounding must not leave the hold timer running.
+love.touchpressed(90003, W - 8, 8)
+step(20, 0)
+love.focus(false)
+love.focus(true)
+step(200, 0)
+check(Audio.isMuted(), "a cancelled corner touch still toggled mute")
+
 resizeTo(390, 844)  step(300, 2)              -- iPhone portrait
 resizeTo(844, 390)  step(300, 2)              -- iPhone landscape
 resizeTo(1280, 800) step(200, 2)              -- desktop
@@ -205,6 +226,9 @@ love.keypressed("f")
 step(60, 1)
 love.keypressed("r")
 step(60, 1)
+love.focus(false)                             -- flush path: backgrounded
+love.focus(true)
+love.quit()                                   -- flush path: shutting down
 
 check(not sampleNaN, "NaN in synthesised audio")
 check(samplePeak > 0.05 and samplePeak <= 1.0, "audio peak out of range: " .. samplePeak)
