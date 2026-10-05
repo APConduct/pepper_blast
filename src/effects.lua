@@ -61,7 +61,7 @@ function Effects.ripple(x, y, scale)
     }
 end
 
-function Effects.confettiBurst(w, h, scale, count)
+function Effects.confetti_burst(w, h, scale, count)
     for _ = 1, count do
         confetti[#confetti + 1] = {
             x = love.math.random() * w,
@@ -133,7 +133,7 @@ function Effects.update(dt, w, h, scale)
     end
 end
 
-function Effects.drawAmbient(w, h, t)
+function Effects.draw_ambient(w, h, t)
     for _, b in ipairs(blobs) do
         local x = w * (0.5 + 0.42 * math.cos(b.phase * 1.7))
         local y = h * (0.5 + 0.42 * math.sin(b.phase * 1.3))
@@ -143,7 +143,7 @@ function Effects.drawAmbient(w, h, t)
     end
 end
 
-function Effects.drawBehind()
+function Effects.draw_behind()
     for _, o in ipairs(ripples) do
         local u = o.life / o.max
         love.graphics.setColor(1, 1, 1, 0.28 * (1 - u))
@@ -163,7 +163,7 @@ function Effects.drawBehind()
     end
 end
 
-function Effects.drawFront()
+function Effects.draw_front()
     for _, o in ipairs(rings) do
         local u = o.life / o.max
         local e = 1 - (1 - u) * (1 - u)

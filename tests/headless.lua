@@ -53,7 +53,7 @@ love.math = stub("math", {
     setRandomSeed = function(s) math.randomseed(s) end,
 })
 
-local function assertFinite(v, what)
+local function assert_finite(v, what)
     check(type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge,
         what .. " got " .. tostring(v))
 end
@@ -75,36 +75,36 @@ love.graphics = stub("graphics", {
         return {
             setVertex = function(_, i, ...)
                 check(i >= 1 and i <= 4, "mesh vertex index " .. tostring(i))
-                for _, v in ipairs({ ... }) do assertFinite(v, "mesh vertex") end
+                for _, v in ipairs({ ... }) do assert_finite(v, "mesh vertex") end
             end,
         }
     end,
     setColor = function(r, g, b, a)
         if type(r) == "table" then r, g, b, a = r[1], r[2], r[3], r[4] end
-        for _, v in ipairs({ r, g, b, a or 1 }) do assertFinite(v, "setColor") end
+        for _, v in ipairs({ r, g, b, a or 1 }) do assert_finite(v, "setColor") end
     end,
     setLineWidth = function(w)
-        assertFinite(w, "setLineWidth")
+        assert_finite(w, "setLineWidth")
         check(w > 0, "setLineWidth must be positive, got " .. tostring(w))
     end,
     circle = function(_, x, y, r)
-        assertFinite(x, "circle x") assertFinite(y, "circle y")
+        assert_finite(x, "circle x") assert_finite(y, "circle y")
         check(r >= 0, "negative circle radius " .. tostring(r))
     end,
     ellipse = function(_, x, y, rx, ry)
-        assertFinite(x, "ellipse x") assertFinite(y, "ellipse y")
-        assertFinite(rx, "ellipse rx") assertFinite(ry, "ellipse ry")
+        assert_finite(x, "ellipse x") assert_finite(y, "ellipse y")
+        assert_finite(rx, "ellipse rx") assert_finite(ry, "ellipse ry")
     end,
-    arc = function(_, _, x, y, r) assertFinite(x, "arc x") assertFinite(r, "arc r") end,
+    arc = function(_, _, x, y, r) assert_finite(x, "arc x") assert_finite(r, "arc r") end,
     rectangle = function(_, x, y, w, h)
-        assertFinite(x, "rect x") assertFinite(w, "rect w") assertFinite(h, "rect h")
+        assert_finite(x, "rect x") assert_finite(w, "rect w") assert_finite(h, "rect h")
     end,
     scale = function(sx, sy)
-        assertFinite(sx, "scale x") assertFinite(sy, "scale y")
+        assert_finite(sx, "scale x") assert_finite(sy, "scale y")
         check(sx ~= 0 and sy ~= 0, "degenerate scale")
     end,
-    translate = function(x, y) assertFinite(x, "translate x") assertFinite(y, "translate y") end,
-    rotate = function(a) assertFinite(a, "rotate") end,
+    translate = function(x, y) assert_finite(x, "translate x") assert_finite(y, "translate y") end,
+    rotate = function(a) assert_finite(a, "rotate") end,
 })
 
 love.window = stub("window", {
@@ -187,7 +187,7 @@ local function step(n, tapsPerFrame)
     end
 end
 
-local function resizeTo(w, h)
+local function resize_to(w, h)
     W, H = w, h
     love.resize(w, h)
 end
@@ -200,14 +200,14 @@ step(600, 2)                                  -- ordinary play, many pops + song
 love.touchpressed(90001, W - 8, 8)            -- hidden hold-to-mute corner
 step(120, 0)
 love.touchreleased(90001, W - 8, 8)
-check(Audio.isMuted(), "holding the corner did not toggle mute")
+check(Audio.is_muted(), "holding the corner did not toggle mute")
 
 -- A finger that slides out of the corner must not complete the hold.
 love.touchpressed(90002, W - 8, 8)
 love.touchmoved(90002, W * 0.5, H * 0.5)
 step(120, 0)
 love.touchreleased(90002, W * 0.5, H * 0.5)
-check(Audio.isMuted(), "a swipe out of the corner toggled mute")
+check(Audio.is_muted(), "a swipe out of the corner toggled mute")
 
 -- A touch cancelled by backgrounding must not leave the hold timer running.
 love.touchpressed(90003, W - 8, 8)
@@ -215,11 +215,11 @@ step(20, 0)
 love.focus(false)
 love.focus(true)
 step(200, 0)
-check(Audio.isMuted(), "a cancelled corner touch still toggled mute")
+check(Audio.is_muted(), "a cancelled corner touch still toggled mute")
 
-resizeTo(390, 844)  step(300, 2)              -- iPhone portrait
-resizeTo(844, 390)  step(300, 2)              -- iPhone landscape
-resizeTo(1280, 800) step(200, 2)              -- desktop
+resize_to(390, 844)  step(300, 2)              -- iPhone portrait
+resize_to(844, 390)  step(300, 2)              -- iPhone landscape
+resize_to(1280, 800) step(200, 2)              -- desktop
 step(1800, 0)                                 -- long idle -> attract mode
 love.keypressed("m") love.keypressed("m")
 love.keypressed("f")
@@ -249,7 +249,7 @@ local probeWorld = {
     beat = 0, calm = 0, party = 0, curiosity = 0,
 }
 
-local function hitRadiusOf(t)
+local function hit_radius_of(t)
     -- Largest offset from the centre that still registers as a touch.
     local lo, hi = 0, 4000
     for _ = 1, 40 do
@@ -267,7 +267,7 @@ for _ = 1, 600 do
     kinds[t.kind] = (kinds[t.kind] or 0) + 1
     minSeed = math.min(minSeed, t.radius * 2)
     maxSeed = math.max(maxSeed, t.radius * 2)
-    local hit = hitRadiusOf(t) * 2
+    local hit = hit_radius_of(t) * 2
     minHit = math.min(minHit, hit)
     maxHit = math.max(maxHit, hit)
 end

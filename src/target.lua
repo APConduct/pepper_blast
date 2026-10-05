@@ -90,11 +90,11 @@ function Target.new(world, x, y)
     self.bob, self.sway, self.rot, self.squash = 0, 0, self.tilt, 1
     self.appear = 0
 
-    self:pickWaypoint(world)
+    self:pick_waypoint(world)
     return self
 end
 
-function Target:pickWaypoint(world)
+function Target:pick_waypoint(world)
     local m = self.radius * 1.1 + (DANCE_BOB + 6) * world.scale
     local x = m + love.math.random() * math.max(1, world.w - 2 * m)
     local y = m + love.math.random() * math.max(1, world.h - 2 * m)
@@ -121,7 +121,7 @@ function Target:update(dt, world)
     local dx, dy = self.tx - self.x, self.ty - self.y
     local dist = math.sqrt(dx * dx + dy * dy)
     if self.repathIn <= 0 or dist < self.radius * 0.6 then
-        self:pickWaypoint(world)
+        self:pick_waypoint(world)
         dx, dy = self.tx - self.x, self.ty - self.y
         dist = math.sqrt(dx * dx + dy * dy)
     end
@@ -195,7 +195,7 @@ end
 
 --- Seed silhouettes. `p` blunts the ends, `sharp` narrows the waist,
 --- `topBias` widens the top for teardrop/cone shapes.
-local function seedShape(rx, ry, p, sharp, topBias)
+local function seed_shape(rx, ry, p, sharp, topBias)
     local n = 28
     local pts = {}
     for i = 0, n - 1 do
@@ -230,7 +230,7 @@ function draw.millet(self, r)
 end
 
 function draw.sunflower(self, r)
-    local pts = seedShape(r * 0.62, r * 0.95, 3, 0.55, 0.12)
+    local pts = seed_shape(r * 0.62, r * 0.95, 3, 0.55, 0.12)
 
     love.graphics.push()
     love.graphics.translate(0, r * 0.07)
@@ -255,7 +255,7 @@ function draw.sunflower(self, r)
 end
 
 function draw.safflower(self, r)
-    local pts = seedShape(r * 0.56, r * 1.0, 4, 0.5, 0.28)
+    local pts = seed_shape(r * 0.56, r * 1.0, 4, 0.5, 0.28)
 
     love.graphics.push()
     love.graphics.translate(0, r * 0.07)
@@ -277,7 +277,7 @@ function draw.safflower(self, r)
 end
 
 function draw.canary(self, r)
-    local pts = seedShape(r * 0.46, r * 1.05, 2, 0.8, 0)
+    local pts = seed_shape(r * 0.46, r * 1.05, 2, 0.8, 0)
 
     love.graphics.push()
     love.graphics.translate(0, r * 0.06)

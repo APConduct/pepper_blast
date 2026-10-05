@@ -37,7 +37,7 @@ local fonts = {}
 -- Helpers
 --------------------------------------------------------------------------
 
-local function loadBest()
+local function load_best()
     if love.filesystem.getInfo(SAVE_FILE) then
         local raw = love.filesystem.read(SAVE_FILE)
         local n = tonumber(raw or "")
@@ -46,20 +46,20 @@ local function loadBest()
     return 0
 end
 
-local function saveBest(n)
+local function save_best(n)
     pcall(love.filesystem.write, SAVE_FILE, tostring(n))
 end
 
 -- Marks the high score as needing a write. Deliberately does not touch the
 -- disk: every pop past the record would otherwise be a synchronous write.
-local function markBestDirty()
+local function mark_best_dirty()
     if not G.bestDirty then
         G.bestDirty = true
         G.saveIn = SAVE_DEBOUNCE
     end
 end
 
-local function safeArea()
+local function safe_area()
     local gw, gh = love.graphics.getDimensions()
     local ok, x, y, w, h = pcall(love.window.getSafeArea)
     if ok and type(x) == "number" and w and h and w > 0 and h > 0 then
@@ -78,7 +78,7 @@ local function lerp(a, b, t) return a + (b - a) * t end
 -- Spawning
 --------------------------------------------------------------------------
 
-local function spawnPoint()
+local function spawn_point()
     -- Best-of-six sampling keeps the seeds from piling up on each other.
     local bestX, bestY, bestScore = G.w * 0.5, G.h * 0.5, -1
     local m = 55 * G.scale
@@ -97,11 +97,11 @@ local function spawnPoint()
 end
 
 local function spawn()
-    local x, y = spawnPoint()
+    local x, y = spawn_point()
     G.targets[#G.targets + 1] = Target.new(G.world, x, y)
 end
 
-local function desiredCount()
+local function desired_count()
     local n = BASE_TARGETS + math.floor(G.score / 14)
     n = math.min(n, MAX_TARGETS)
     if G.party > 0 then n = n + 4 end
@@ -118,7 +118,7 @@ function Game.load()
     G = {
         targets = {},
         score = 0,
-        best = loadBest(),
+        best = load_best(),
         combo = 0,
         comboTimer = 0,
         party = 0,
@@ -179,7 +179,7 @@ end
 --- focus, and on quit, so a good run costs one write instead of one per tap.
 function Game.flush()
     if G and G.bestDirty then
-        saveBest(G.best)
+        save_best(G.best)
         G.bestDirty = false
     end
 end
@@ -194,10 +194,10 @@ local function celebrate()
     G.flash = 1
     G.shake = 1
     Audio.song()
-    Effects.confettiBurst(G.w, G.h, G.scale, 90)
+    Effects.confetti_burst(G.w, G.h, G.scale, 90)
 end
 
-local function popTarget(index)
+local function pop_target(index)
     local t = table.remove(G.targets, index)
     local x, y = t:pos()
 
@@ -211,7 +211,7 @@ local function popTarget(index)
 
     if G.score > G.best then
         G.best = G.score
-        markBestDirty()
+        mark_best_dirty()
     end
 
     local power = 1 + math.min(G.combo, 8) * 0.08
@@ -230,8 +230,8 @@ end
 -- Input
 --------------------------------------------------------------------------
 
-local function inMuteCorner(x, y)
-    local sx, sy, sw, _sh = safeArea()
+local function in_mute_corner(x, y)
+    local sx, sy, sw, _sh = safe_area()
     local size = 64 * G.scale
     return x >= sx + sw - size and y <= sy + size
 end
@@ -239,7 +239,7 @@ end
 function Game.press(id, x, y)
     if not G then return end
 
-    G.presses[id] = { x = x, y = y, held = 0, corner = inMuteCorner(x, y) }
+    G.presses[id] = { x = x, y = y, held = 0, corner = in_mute_corner(x, y) }
 
     G.world.tapX, G.world.tapY = x, y
     G.world.curiosity = 1
@@ -259,7 +259,7 @@ function Game.press(id, x, y)
     end
 
     if hitIndex then
-        popTarget(hitIndex)
+        pop_target(hitIndex)
     else
         Audio.tick()
         G.idle = math.max(0, G.idle - 4)
@@ -278,7 +278,7 @@ function Game.move(id, x, y)
 
     local dx, dy = x - p.x, y - p.y
     local slop = HOLD_SLOP * G.scale
-    if dx * dx + dy * dy > slop * slop or not inMuteCorner(x, y) then
+    if dx * dx + dy * dy > slop * slop or not in_mute_corner(x, y) then
         p.corner = false
     end
 end
@@ -286,7 +286,7 @@ end
 --- Drop every in-flight press. iOS can cancel a touch without ever delivering
 --- a release (backgrounding, a system edge gesture), which would otherwise
 --- leave a stale entry sitting on the mute timer forever.
-function Game.clearPresses()
+function Game.clear_presses()
     if G then G.presses = {} end
 end
 
@@ -299,7 +299,7 @@ function Game.keypressed(key)
     if key == "escape" then
         love.event.quit()
     elseif key == "m" then
-        Audio.toggleMute()
+        Audio.toggle_mute()
         G.muteFeedback = 1.4
     elseif key == "f" then
         local full = love.window.getFullscreen()
@@ -337,7 +337,7 @@ function Game.update(dt)
     if G.party > 0 then
         G.party = math.max(0, G.party - dt)
         if G.party > 0 and love.math.random() < dt * 6 then
-            Effects.confettiBurst(G.w, G.h, G.scale, 6)
+            Effects.confetti_burst(G.w, G.h, G.scale, 6)
         end
     end
     G.world.party = G.party
@@ -359,7 +359,7 @@ function Game.update(dt)
             p.held = p.held + dt
             if p.held >= HOLD_TO_MUTE then
                 p.done = true
-                Audio.toggleMute()
+                Audio.toggle_mute()
                 G.muteFeedback = 1.6
             end
         end
@@ -369,7 +369,7 @@ function Game.update(dt)
         t:update(dt, G.world)
     end
 
-    local want = desiredCount()
+    local want = desired_count()
 
     G.spawnIn = G.spawnIn - dt
     if G.spawnIn <= 0 and #G.targets < want then
@@ -403,7 +403,7 @@ end
 -- Draw
 --------------------------------------------------------------------------
 
-local function drawBackground()
+local function draw_background()
     local glow = G.partyGlow
     local pulse = 0.5 + 0.5 * math.sin(G.time * 3)
 
@@ -428,10 +428,10 @@ local function drawBackground()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(bgMesh, -bleed, -bleed, 0, G.w + 2 * bleed, G.h + 2 * bleed)
 
-    Effects.drawAmbient(G.w, G.h, G.time)
+    Effects.draw_ambient(G.w, G.h, G.time)
 end
 
-local function drawSeed(x, y, r, filled, color)
+local function draw_seed(x, y, r, filled, color)
     if filled then
         love.graphics.setColor(color)
         love.graphics.ellipse("fill", x, y, r, r * 1.25, 12)
@@ -445,8 +445,8 @@ local function drawSeed(x, y, r, filled, color)
     end
 end
 
-local function drawHud()
-    local sx, sy, sw, sh = safeArea()
+local function draw_hud()
+    local sx, sy, sw, sh = safe_area()
     local pad = 16 * G.scale
 
     -- Progress toward the next song, drawn as a row of seeds so it means
@@ -465,7 +465,7 @@ local function drawHud()
             bounce = math.sin(G.time * 6 + i * 0.5) * r * 0.25
         end
         local color = Target.PALETTE[((i - 1) % #Target.PALETTE) + 1]
-        drawSeed(x0 + (i - 1) * gap, y0 + bounce, r, filled, color)
+        draw_seed(x0 + (i - 1) * gap, y0 + bounce, r, filled, color)
     end
 
     -- Score for Joey.
@@ -486,15 +486,15 @@ local function drawHud()
     if G.muteFeedback > 0 then
         love.graphics.setFont(fonts.small)
         love.graphics.setColor(1, 1, 1, math.min(1, G.muteFeedback))
-        love.graphics.printf(Audio.isMuted() and "sound off" or "sound on",
+        love.graphics.printf(Audio.is_muted() and "sound off" or "sound on",
             sx, sy + sh - pad - fonts.small:getHeight(), sw - pad, "right")
     end
 end
 
-local function drawIntro()
+local function draw_intro()
     if G.intro <= 0.01 then return end
     local a = G.intro
-    local sx, sy, sw, sh = safeArea()
+    local sx, sy, sw, sh = safe_area()
 
     love.graphics.setColor(0, 0, 0, 0.35 * a)
     love.graphics.rectangle("fill", 0, 0, G.w, G.h)
@@ -524,14 +524,14 @@ function Game.draw()
             (love.math.random() - 0.5) * k)
     end
 
-    drawBackground()
-    Effects.drawBehind()
+    draw_background()
+    Effects.draw_behind()
 
     for _, t in ipairs(G.targets) do
         t:draw()
     end
 
-    Effects.drawFront()
+    Effects.draw_front()
 
     -- "Come play!" halo during attract mode.
     if G.world.calm > 0.05 then
@@ -549,8 +549,8 @@ function Game.draw()
         love.graphics.rectangle("fill", 0, 0, G.w, G.h)
     end
 
-    drawHud()
-    drawIntro()
+    draw_hud()
+    draw_intro()
 
     love.graphics.setColor(1, 1, 1, 1)
 end

@@ -65,7 +65,7 @@ end
 function love.focus(focused)
     if not focused then
         Game.flush()
-        Game.clearPresses()
+        Game.clear_presses()
     end
 end
 
